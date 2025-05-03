@@ -2,31 +2,89 @@
   <div id="app">
     <div class="header">HR工作台</div>
     <div class="tabs">
-      <div class="tab active">JD生成</div>
-      <div class="tab">简历筛选</div>
-      <div class="tab">面试提问</div>
+      <div class="tab" :class="{ active: activeTab === 'jd' }" @click="activeTab = 'jd'">JD生成</div>
+      <div class="tab" :class="{ active: activeTab === 'resume' }" @click="activeTab = 'resume'">简历筛选</div>
+      <div class="tab" :class="{ active: activeTab === 'interview' }" @click="activeTab = 'interview'">面试提问</div>
     </div>
-    <div class="main-content">
-      <div class="input-section">
-        <h3>职位描述生成</h3>
-        <div class="form-group">
-          <label>职位基本信息</label>
-          <textarea v-model="inputMessage" placeholder="输入职位名称、要求等信息..." class="input-textarea"></textarea>
+
+    <div class="main-content-container">
+      <!-- JD生成模块 -->
+      <div v-show="activeTab === 'jd'" class="main-content">
+        <div class="input-section">
+          <h3>职位描述生成</h3>
+          <div class="form-group">
+            <label>职位基本信息</label>
+            <textarea v-model="inputMessage" placeholder="输入职位名称、要求等信息..." class="input-textarea"></textarea>
+          </div>
+          <div class="button-group">
+            <button @click="sendJdMessage" class="generate-btn">+ 生成JD</button>
+            <button @click="clearJdContent" class="clear-btn">× 清除内容</button>
+          </div>
         </div>
-        <div class="button-group">
-          <button @click="sendMessage" class="generate-btn">+ 生成JD</button>
-          <button @click="clearContent" class="clear-btn">× 清除内容</button>
+        <div class="output-section">
+          <h3>生成结果</h3>
+          <div class="result-container">
+            <div v-for="(message, index) in jdMessages" :key="index" class="message">
+              <div class="markdown-content" v-html="renderMarkdown(message.content)"></div>
+            </div>
+          </div>
         </div>
       </div>
-      <div class="output-section">
-        <h3>生成结果</h3>
-        <div class="result-container">
-          <div v-for="(message, index) in messages" :key="index" class="message">
-            <div class="markdown-content" v-html="renderMarkdown(message.content)"></div>
+
+      <!-- 简历筛选模块 -->
+      <div v-show="activeTab === 'resume'" class="main-content">
+        <div class="input-section">
+          <h3>简历筛选</h3>
+          <div class="form-group">
+            <label>人才要求</label>
+            <textarea v-model="inputResumeRequirement" placeholder="输入人才要求（如：5年经验，Java开发）..." class="input-textarea"></textarea>
+          </div>
+          <div class="button-group">
+            <button @click="sendResumeMessage" class="generate-btn">+ 筛选简历</button>
+            <button @click="clearResumeContent" class="clear-btn">× 清除内容</button>
+          </div>
+        </div>
+        <div class="output-section">
+          <h3>候选简历</h3>
+          <div class="result-container">
+            <div v-for="(message, index) in resumeMessages" :key="index" class="message">
+              <div class="markdown-content" v-html="renderMarkdown(message.content)"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 面试提问模块 -->
+      <div v-show="activeTab === 'interview'" class="main-content">
+        <div class="input-section">
+          <h3>面试提问生成</h3>
+          <div class="input-column">
+            <div class="form-group">
+              <label>简历及岗位信息</label>
+              <textarea 
+                v-model="combinedInput" 
+                placeholder="输入候选人简历内容及岗位要求..."
+                class="input-textarea"
+                style="height: 240px"
+              ></textarea>
+            </div>
+          </div>
+          <div class="button-group">
+            <button @click="sendInterviewMessage" class="generate-btn">+ 生成面试问题</button>
+            <button @click="clearInterviewContent" class="clear-btn">× 清除内容</button>
+          </div>
+        </div>
+        <div class="output-section">
+          <h3>面试问题列表</h3>
+          <div class="result-container">
+            <div v-for="(message, index) in interviewMessages" :key="index" class="message">
+              <div class="markdown-content" v-html="renderMarkdown(message.content)"></div>
+            </div>
           </div>
         </div>
       </div>
     </div>
+
     <div class="footer">
       created by <a href="#">HiAgent</a><br>
       页面内容均由 AI 生成，仅供参考
@@ -35,211 +93,200 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
-import { marked } from'marked';
+import { ref, nextTick } from 'vue';
+import { marked } from 'marked';
 import DOMPurify from 'dompurify';
-import { nextTick } from 'vue';
 
+// 配置marked以支持表格渲染
+marked.use({
+  gfm: true, // 启用GitHub Flavored Markdown
+  tables: true // 启用表格解析
+});
+
+// ----------------------
+// JD生成模块
+// ----------------------
 const inputMessage = ref('');
-const messages = ref([]);
+const jdMessages = ref([]);
 
-const apiKey = 'd07p1830i2mho6cupjqg';
-const baseUrl = '/api/proxy/api/v1/chat_query'; // 同步curl的API路径
-const appConversationId = 'd07p7gav43mu0vq10d3g';
-const userId = '321';
+const jdApiConfig = {
+  apiKey: 'd07p1830i2mho6cupjqg',
+  baseUrl: '/api/proxy/api/v1/chat_query',
+  appConversationId: 'd07p7gav43mu0vq10d3g',
+  userId: '321'
+};
 
-const sendMessage = async () => {
+const sendJdMessage = async () => {
   if (inputMessage.value.trim() === '') return;
+  await sendRequest(inputMessage.value, jdMessages, jdApiConfig);
+};
 
-  const userContent = inputMessage.value;
-  
+const clearJdContent = () => {
+  inputMessage.value = '';
+  jdMessages.value = [];
+};
+
+// ----------------------
+// 简历筛选模块
+// ----------------------
+const inputResumeRequirement = ref('');
+const resumeMessages = ref([]);
+
+const resumeApiConfig = {
+  apiKey: 'd0b427ufqcku1aff0500',
+  baseUrl: '/api/proxy/api/v1/chat_query',
+  appConversationId: 'd0b42i7fiaqoof61r630',
+  userId: '321'
+};
+
+const sendResumeMessage = async () => {
+  if (inputResumeRequirement.value.trim() === '') return;
+  await sendRequest(inputResumeRequirement.value, resumeMessages, resumeApiConfig);
+};
+
+const clearResumeContent = () => {
+  inputResumeRequirement.value = '';
+  resumeMessages.value = [];
+};
+
+// ----------------------
+// 面试提问模块
+// ----------------------
+const combinedInput = ref('');
+const interviewMessages = ref([]);  // 添加缺失的响应式变量声明
+
+const interviewApiConfig = { 
+  apiKey: 'd08hiib0i2msccmh24bg',
+  baseUrl: '/api/proxy/api/v1/chat_query',
+  appConversationId: 'd08hovffiaqoof61pqu0',
+  userId: '321'
+};
+
+const sendInterviewMessage = async () => {
+  if (combinedInput.value.trim() === '') return;
+  await sendRequest(combinedInput.value, interviewMessages, interviewApiConfig);
+};
+
+const clearInterviewContent = () => {
+  combinedInput.value = '';
+  interviewMessages.value = [];
+};
+
+// ----------------------
+// 通用请求处理
+// ----------------------
+const sendRequest = async (userContent, messagesRef, apiConfig) => {
   try {
-    const headers = {
-      'Apikey': apiKey,
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`, // 添加标准认证头
-      'Accept': 'text/event-stream'
-    };
+    // 安全处理响应式对象
+    const contentValue = typeof userContent === 'object' ? userContent.value : userContent;
+    
+    // 构建请求数据
     const data = {
-      Query: userContent,
-      AppConversationID: appConversationId,
+      Query: contentValue,
+      AppConversationID: apiConfig.appConversationId,
       ResponseMode: 'streaming',
-      UserID: userId
+      UserID: apiConfig.userId
     };
 
-    messages.value = [];
+    messagesRef.value = [];
     const agentMessage = { sender: 'agent', content: '' };
-    messages.value.push(agentMessage);
+    messagesRef.value.push(agentMessage);
     let currentChunk = '';
 
-    const response = await fetch(baseUrl, {
+    // 发送请求
+    const response = await fetch(apiConfig.baseUrl, {
       method: 'POST',
-      headers: headers,
+      headers: {
+        'Apikey': apiConfig.apiKey,
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiConfig.apiKey}`,
+        'Accept': 'text/event-stream'
+      },
       body: JSON.stringify(data),
-      credentials: 'omit'  
+      credentials: 'omit'
     });
 
+    // 流式数据处理
     const reader = response.body.getReader();
     const decoder = new TextDecoder('utf-8');
     let buffer = '';
-
+    
     while (true) {
       const { done, value } = await reader.read();
       if (done) {
         if (buffer.trim()) {
-          const lines = buffer.split('\n');
-          lines.forEach(line => {
-            if (line.startsWith('data:')) {
-              const jsonStr = line.slice(5).trim();
-              let validJson = jsonStr;
-              const start = validJson.indexOf('{');
-              const end = validJson.lastIndexOf('}');
-              if (start!== -1 && end!== -1 && end > start) {
-                validJson = validJson.substring(start, end + 1);
-              } else {
-                console.warn('无效的JSON片段:', jsonStr);
-                return;
-              }
-              try {
-                const eventData = JSON.parse(validJson);
-                if (eventData.event ==='message' && eventData.answer) {
-                  currentChunk += eventData.answer;
-                  // 每次接收到数据都更新 messages
-                  messages.value = [{
-                    ...messages.value[0],
-                    content: DOMPurify.sanitize(marked.parse(currentChunk)) 
-                  }];
-                }
-              } catch (error) {
-                console.error('事件解析失败:', error);
-              }
-            }
-          });
+          buffer.split('\n').forEach(processSSELine);
         }
         break;
       }
-      
       buffer += decoder.decode(value, { stream: true });
       
       let lineEndIndex;
       while ((lineEndIndex = buffer.indexOf('\n')) >= 0) {
         const line = buffer.slice(0, lineEndIndex);
         buffer = buffer.slice(lineEndIndex + 1);
-        
-        if (line.startsWith('data:')) {
-          const jsonStr = line.slice(5).trim();
-          let validJson = jsonStr;
-          const start = validJson.indexOf('{');
-          const end = validJson.lastIndexOf('}');
-          if (start!== -1 && end!== -1 && end > start) {
-            validJson = validJson.substring(start, end + 1);
-          } else {
-            console.warn('无效的JSON片段:', jsonStr);
-            continue;
-          }
-          try {
-            const eventData = JSON.parse(validJson);
-            switch(eventData.event) {
-              case'message_start':
-                currentChunk = '';
-                messages.value = [{...agentMessage, content: ''}];
-                break;
-              case 'message':
-                if (eventData.answer) {
-                  currentChunk += eventData.answer;
-                  // 使用响应式赋值并强制更新
-                  messages.value[0].content = DOMPurify.sanitize(
-                    marked.parse(currentChunk, { breaks: true })
-                  );
-                  // 触发异步DOM更新
-                  await nextTick();
-                }
-                break;
-              case'message_end':
-                break;
-            }
-          } catch (error) {
-            console.error('事件解析失败:', error);
-          }
-        }
+        processSSELine(line);
       }
     }
+
+    function processSSELine(line) {
+      if (!line.startsWith('data:')) return;
+      
+      const jsonStr = line.slice(5).trim();
+      const jsonStart = jsonStr.indexOf('{');
+      const jsonEnd = jsonStr.lastIndexOf('}');
+      
+      if (jsonStart === -1 || jsonEnd <= jsonStart) {
+        console.warn('Invalid JSON segment:', jsonStr.slice(0, 50));
+        return;
+      }
+
+      try {
+        const eventData = JSON.parse(jsonStr.slice(jsonStart, jsonEnd + 1));
+        
+        switch (eventData.event) {
+          case 'message_start':
+            currentChunk = '';
+            messagesRef.value = [{...agentMessage, content: ''}];
+            break;
+            
+          case 'message':
+            if (eventData.answer) {
+              currentChunk += eventData.answer;
+              messagesRef.value[0].content = DOMPurify.sanitize(
+                marked.parse(currentChunk, { breaks: true })
+              );
+              nextTick();
+            }
+            break;
+            
+          case 'message_end':
+            // 可添加最终处理逻辑
+            break;
+        }
+      } catch (error) {
+        console.error('SSE Processing Error:', error);
+      }
+    }
+
   } catch (error) {
-    console.error('请求出错:', error);
-    inputMessage.value = userContent;
-    messages.value = [];
+    console.error('请求失败:', error);
+    messagesRef.value = [];
   }
 };
 
-const clearContent = () => {
-  inputMessage.value = '';
-  messages.value = [];
-};
-
-marked.setOptions({
-  breaks: true,
-  gfm: true
-});
+// ----------------------
+// 通用工具方法
+// ----------------------
+marked.setOptions({ breaks: true, gfm: true });
 
 const renderMarkdown = (content) => {
   const rawHtml = marked.parse(content);
   return DOMPurify.sanitize(rawHtml);
 };
 
-function tryProcessLine(dataStr) {
-  let sanitizedData = dataStr || ''; 
-  
-  try {
-    if (sanitizedData) {
-      sanitizedData = sanitizedData
-       .replace(/(['"])?([a-z0-9_]+)(['"]):/gi, '"$2":')
-       .replace(/,\s*}/g, '}')
-       .replace(/(\\*)"([^"]*)"(\\*)/g, '$1\\"$2\\"$3');
-    }
-
-    const jsonStart = sanitizedData.indexOf('{');
-    const jsonEnd = sanitizedData.lastIndexOf('}');
-    if (jsonStart === -1 || jsonEnd <= jsonStart) {
-      console.warn('JSON结构异常:', sanitizedData.slice(0, 50));
-      return;
-    }
-
-    const validJson = sanitizedData.slice(jsonStart, jsonEnd + 1);
-    const dataObj = JSON.parse(validJson);
-    
-    console.debug('Processed event:', dataObj.event);
-
-    if (dataObj.event === 'message') {
-      currentChunk += dataObj.answer?.replace(/["']/g, '') || ''; 
-    }
-  } catch (error) {
-    console.error('增强错误处理:', {
-      rawData: dataStr,
-      sanitizedData: sanitizedData || 'undefined', 
-      error: error.message
-    });
-  }
-}
-
-function safeParseJSON(str) {
-  try {
-    const sanitized = str
-     .replace(/\\+/g, '\\\\')
-     .replace(/[\x00-\x1F]/g, '')
-     .replace(/'/g, '"');
-    return JSON.parse(sanitized);
-  } catch (e) {
-    console.warn('JSON解析失败:', str.slice(0, 50));
-    return null;
-  }
-}
-
-function updateMessageContent(content) {
-  messages.value = [{
-    ...messages.value[0],
-    content: DOMPurify.sanitize(marked.parse(content))
-  }];
-}
+// 状态管理
+const activeTab = ref('jd');
 </script>
 
 <style scoped>
@@ -251,7 +298,7 @@ function updateMessageContent(content) {
   text-align: left;
   color: #333;
   margin: 0;
-  padding: 20px;
+  padding: 5px;
 }
 
 .header {
@@ -279,29 +326,41 @@ function updateMessageContent(content) {
   background: white;
 }
 
+.main-content-container {
+  flex: 1;
+  min-height: calc(100vh - 160px);  /* 保持原有高度计算 */
+  overflow-y: auto;  /* 新增滚动条 */
+  padding-bottom: 80px;  /* 新增底部内边距 */
+}
+
+.footer {
+  position: relative;
+  margin-top: auto;  /* 关键布局属性 */
+  padding: 20px 0;
+  background: white;
+  z-index: 1;
+}
+
 .main-content {
-  display: flex;
-  gap: 20px;
-  width: 1200px;          
-  margin: 0 auto;         
-  overflow: hidden;      
+  width: 100%;
+  min-height: auto;
 }
 
-.input-section {
-  width: 500px;          
-  height: 560px;         
-  flex: none;            
-}
-
+.input-section,
 .output-section {
-  width: 700px;          
-  height: 560px;         
-  flex: none;            
+  flex: 1 1 50%; /* 新增弹性分配比例 */
+  min-width: 600px; /* 最小宽度保证可读性 */
+  height: 100%;
 }
 
 .result-container {
-  height: 460px;         
-  overflow-y: auto;      
+  height: calc(100% - 60px); /* 60px = 标题高度 + 按钮高度 */
+}
+
+.main-content {
+  display: flex;
+  gap: 20px;
+  flex: 1;
 }
 
 .input-section,
@@ -310,7 +369,10 @@ function updateMessageContent(content) {
   background: white;
   padding: 20px;
   border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+  min-height: 500px;
 }
 
 .form-group {
@@ -337,6 +399,16 @@ function updateMessageContent(content) {
 .button-group {
   display: flex;
   gap: 10px;
+  margin-top: 20px;
+}
+
+.generate-btn,
+.clear-btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  color: white;
+  cursor: pointer;
 }
 
 .generate-btn {
@@ -344,43 +416,40 @@ function updateMessageContent(content) {
 }
 
 .clear-btn {
-  background: #808080;  
-  color: white;         
+  background: #808080;
 }
 
 .output-section h3 {
   color: #333;
-  margin-top: 0;
+  margin: 0 0 15px;
+  border-bottom: 1px solid #e0e0e0;
+  padding-bottom: 10px;
 }
 
 .result-container {
-  margin-top: 10px;
-  min-height: 300px;
-  border: 1px solid #e0e0e0;
-  padding: 10px;
+  flex: 1;
   overflow-y: auto;
+  padding: 10px;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
 }
 
 .markdown-content {
   line-height: 1.6;
   color: #333;
-  text-align: left;
+  white-space: pre-wrap;
 }
 
-.markdown-content h1, 
-.markdown-content h2, 
+.markdown-content h1,
+.markdown-content h2,
 .markdown-content h3 {
   margin: 1em 0 0.5em;
 }
 
-.markdown-content ul {
-  padding-left: 2em;
-  list-style: disc;
-}
-
+.markdown-content ul,
 .markdown-content ol {
   padding-left: 2em;
-  list-style: decimal;
+  margin: 1em 0;
 }
 
 .markdown-content code {
@@ -389,10 +458,38 @@ function updateMessageContent(content) {
   border-radius: 3px;
 }
 
+.markdown-content table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1em 0;
+}
+
+.markdown-content th,
+.markdown-content td {
+  padding: 8px;
+  border: 1px solid #e0e0e0;
+}
+
+.markdown-content th {
+  background-color: #f8f9fa;
+  font-weight: 600;
+}
+
+.markdown-content tr:nth-child(even) {
+  background-color: #f8f9fa;
+}
+
 .footer {
   margin-top: 30px;
   color: #666;
   font-size: 14px;
   text-align: center;
+}
+
+.input-column {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  width: 100%;
 }
 </style>
