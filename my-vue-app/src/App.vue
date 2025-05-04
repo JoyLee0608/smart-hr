@@ -100,7 +100,10 @@ import DOMPurify from 'dompurify';
 // 配置marked以支持表格渲染
 marked.use({
   gfm: true, // 启用GitHub Flavored Markdown
-  tables: true // 启用表格解析
+  tables: true, // 启用表格解析
+  breaks: true, // 启用换行符转换为 <br>
+  sanitize: false // 配合 DOMPurify 进行安全处理
+
 });
 
 
@@ -484,6 +487,16 @@ const activeTab = ref('jd');
 
 .markdown-content tr:nth-child(even) {
   background-color: #f8f9fa;
+}
+/* 新增和修改的 CSS 样式 */
+.markdown-content {
+  line-height: 1.6;
+  color: #333;
+  white-space: pre-wrap;
+  /* 关键优化：重置段落和标题的间距 */
+}
+.markdown-content p {
+  margin: 0.5em 0; /* 段落上下间距调整为较小值 */
 }
 
 .footer {
