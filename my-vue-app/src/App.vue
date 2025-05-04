@@ -110,10 +110,13 @@ const inputMessage = ref('');
 const jdMessages = ref([]);
 
 const jdApiConfig = {
+
   apiKey: 'd07p1830i2mho6cupjqg',
-  baseUrl: '/api/proxy/api/v1/chat_query',
+  // baseUrl: '/api/proxy/api/v1/chat_query'
+  baseUrl: 'https://hiagent.volcenginepaas.com/api/v1/chat_query', // 直接使用完整地址
   appConversationId: 'd07p7gav43mu0vq10d3g',
   userId: '321'
+
 };
 
 const sendJdMessage = async () => {
@@ -134,7 +137,8 @@ const resumeMessages = ref([]);
 
 const resumeApiConfig = {
   apiKey: 'd0b427ufqcku1aff0500',
-  baseUrl: '/api/proxy/api/v1/chat_query',
+  //baseUrl: '/api/proxy/api/v1/chat_query',
+  baseUrl: 'https://hiagent.volcenginepaas.com/api/v1/chat_query', // 直接使用完整地址
   appConversationId: 'd0b42i7fiaqoof61r630',
   userId: '321'
 };
@@ -157,7 +161,8 @@ const interviewMessages = ref([]);  // 添加缺失的响应式变量声明
 
 const interviewApiConfig = { 
   apiKey: 'd08hiib0i2msccmh24bg',
-  baseUrl: '/api/proxy/api/v1/chat_query',
+  //baseUrl: '/api/proxy/api/v1/chat_query',
+  baseUrl: 'https://hiagent.volcenginepaas.com/api/v1/chat_query', // 直接使用完整地址
   appConversationId: 'd08hovffiaqoof61pqu0',
   userId: '321'
 };
