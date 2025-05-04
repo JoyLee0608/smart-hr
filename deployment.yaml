@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: smart-hr  # 统一命名
+spec:
+  selector:
+    matchLabels:
+      app: smart-hr
+  template:
+    metadata:
+      labels:
+        app: smart-hr
+    spec:
+      containers:
+      - name: smart-hr
+        image: hiagent-app-cn-beijing.cr.volces.com/hiagent/smart-hr:0.2
+        ports:
+        - containerPort: 80
+        resources:
+          requests:  # 新增资源请求配置
+            memory: "150Mi"
+            cpu: "150m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: smart-hr-service
+spec:
+  type: LoadBalancer  # 直接使用负载均衡器暴露服务
+  selector:
+    app: smart-hr
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
+
+# 移除Ingress配置部分
