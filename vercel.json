@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/proxy/(.*)",
+      "destination": "https://hiagent.volcenginepaas.com/api/v1/$1"
+    }
+  ]
+}
