@@ -2,7 +2,7 @@
   "rewrites": [
     {
       "source": "/api/proxy/(.*)",
-      "destination": "https://hiagent.volcenginepaas.com/$1"
+      "destination": "https://hiagent.volcenginepaas.com/api/proxy/$1"
     }
   ],
   "headers": [
