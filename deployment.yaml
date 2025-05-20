@@ -13,7 +13,8 @@ spec:
     spec:
       containers:
       - name: smart-hr
-        image: hiagent-app-cn-beijing.cr.volces.com/hiagent/smart-hr:0.2
+        image: paas-tob-dev-cn-beijing.cr.volces.com/hiagent-app/smart-hr:0.1  # 镜像名称直接写在此处
+        imagePullPolicy: Always  # 添加镜像拉取策略
         ports:
         - containerPort: 80
         resources:
@@ -23,6 +24,8 @@ spec:
           limits:
             memory: "512Mi"
             cpu: "500m"
+      imagePullSecrets:  
+      - name: volc-secret  # 通过secret名称引用密码
 
 ---
 apiVersion: v1
